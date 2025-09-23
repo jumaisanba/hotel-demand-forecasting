@@ -1,0 +1,28 @@
+{
+  "numeric_features": [
+    "lead_time", "lead_time_log", "adr", "total_guests",
+    "total_nights", "has_deposit", "is_city_hotel",
+    "is_holiday", "temp_avg", "bookings_last_year",
+    "cancels_last_year", "booking_changes"
+  ],
+  "categorical_features": [
+    "market_segment_enc",
+    "distribution_channel_enc",
+    "reserved_room_type_enc",
+    "day_of_week"
+  ],
+  "embedding_sizes": {
+    "market_segment_enc": [8, 4],
+    "distribution_channel_enc": [5, 3],
+    "reserved_room_type_enc": [9, 3],
+    "day_of_week": [7, 3]
+  },
+  "hidden_size": 256,
+  "gru_layers": 2,
+  "dropout": 0.3,
+  "forecast_horizon": 30,
+  "output_dims": 2,
+  "learning_rate": 0.004,
+  "weight_decay": 0.0001,
+  "optimizer": "Adam"
+}

@@ -1,0 +1,136 @@
+version: '3.9'
+
+services:
+
+  db:
+    image: postgres:15
+    container_name: hotel_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  frontend:
+    build:
+      context: ./frontend_ui
+      dockerfile: Dockerfile
+    container_name: frontend_ui
+    ports:
+      - "8080:80"
+    restart: always
+
+  router:
+    build:
+      context: .
+      dockerfile: router/Dockerfile
+    container_name: router
+    restart: always
+    depends_on:
+      - db
+    environment:
+      PREDICTION_SERVICE_URL: ${PREDICTION_SERVICE_URL}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      DATA_INTERFACE_SERVICE_URL: ${DATA_INTERFACE_SERVICE_URL}
+      SCHEDULER_SERVICE_URL: ${SCHEDULER_SERVICE_URL}
+      SCHEDULER_KEY: ${SCHEDULER_KEY}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./database:/database
+      - ./shared:/shared
+
+  prediction_service:
+    build:
+      context: .
+      dockerfile: prediction_service/Dockerfile
+    container_name: prediction_service
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8002:8001"
+    volumes:
+      - ./shared:/shared
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+
+  auth_service:
+    build:
+      context: .
+      dockerfile: auth_service/Dockerfile
+    container_name: auth_service
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8003:8002"
+    volumes:
+      - ./shared:/shared
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      SCHEDULER_KEY: ${SCHEDULER_KEY}
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: ${ALGORITHM}
+
+  data_interface_service:
+    build:
+      context: .
+      dockerfile: data_interface_service/Dockerfile
+    container_name: data_interface_service
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8004:8003"
+    volumes:
+      - ./shared:/shared
+      - ./database:/database
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+
+  scheduler_service:
+    build:
+      context: .
+      dockerfile: scheduler_service/Dockerfile
+    container_name: scheduler_service
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "8005:8004"
+    volumes:
+      - ./shared:/shared
+    environment:
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      ROUTER_SERVICE_URL: ${ROUTER_SERVICE_URL}
+
+volumes:
+  pg_data:
