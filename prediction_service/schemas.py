@@ -19,7 +19,7 @@ class PredictRequest(BaseModel):
     has_deposit: bool
 
 
-class ForecastDay(BaseModel):
+class PredictDay(BaseModel):
     date: str
     bookings: float
     cancellations: float
@@ -31,4 +31,4 @@ class ForecastDay(BaseModel):
 class PredictResponse(BaseModel):
     hotel_id: int
     target_date: date
-    forecast: List[ForecastDay]
+    forecast: List[PredictDay]

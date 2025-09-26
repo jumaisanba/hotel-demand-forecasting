@@ -1,5 +1,3 @@
-# router/routers/prediction_router.py
-
 import logging
 import requests
 from fastapi import APIRouter, HTTPException

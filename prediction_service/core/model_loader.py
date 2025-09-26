@@ -1,5 +1,3 @@
-# prediction_service/model_loader.py
-
 import torch
 import json
 import logging

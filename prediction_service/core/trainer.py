@@ -1,5 +1,3 @@
-# prediction_service/trainer.py
-
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path

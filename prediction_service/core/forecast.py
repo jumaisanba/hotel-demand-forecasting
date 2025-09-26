@@ -1,5 +1,3 @@
-# prediction_service/core/forecast.py
-
 import logging
 from datetime import timedelta, date
 import numpy as np
@@ -7,14 +5,13 @@ import pandas as pd
 import torch
 from sqlalchemy.orm import Session
 
-from schemas import PredictResponse
 from shared.db import get_session_sync
 from shared.data_loader import load_bookings, load_weather, load_holidays
 from shared.models import Hotel
 from core.model_loader import load_model_and_config
 from prediction_service.preprocessing.preprocessor import preprocess_data
 from prediction_service.preprocessing.scaling import normalize_data, denormalize_forecast
-from prediction_service.schemas import ForecastDay, PredictResponse
+from prediction_service.schemas import PredictDay, PredictResponse
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +159,7 @@ def run_forecast_for_hotel(
     y_pred = denormalize_forecast(y_pred, hotel_id)
 
     forecast = [
-        ForecastDay(
+        PredictDay(
             date=(target_date + timedelta(days=i)).isoformat(),
             bookings=round(int(book)),
             cancellations=round(int(cancel)),
