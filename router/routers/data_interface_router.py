@@ -1,13 +1,11 @@
-# router/routers/data_interface_router.py
-
 import logging
-import requests
+import httpx
 from typing import Dict
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 
 from router.config import DATA_INTERFACE_SERVICE_URL
 from router.schemas import ForecastRequest, ForecastResponse
-from utils import verify_token
+from router.dependencies import verify_token, get_http_client
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,6 +15,7 @@ router = APIRouter()
 async def upload_bookings(
     file: UploadFile = File(...),
     token_data: Dict = Depends(verify_token),
+    client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """
     Проксирование загрузки бронирований в data_interface_service.
@@ -25,17 +24,19 @@ async def upload_bookings(
     if not hotel_id:
         raise HTTPException(status_code=403, detail="hotel_id required for this action")
 
-    files = {"file": (file.filename, file.file, file.content_type)}
+    # Асинхронно читаем файл (иначе FastAPI может зависнуть на больших файлах)
+    file_content = await file.read()
+
+    files = {"file": (file.filename, file_content, file.content_type)}
     headers = {"x-hotel-id": str(hotel_id)}
 
     try:
-        response = requests.post(
+        response = await client.post(
             f"{DATA_INTERFACE_SERVICE_URL}/upload/upload",
             files=files,
             headers=headers,
-            timeout=10
         )
-    except requests.RequestException as e:
+    except httpx.RequestError as e:
         logger.error("Ошибка соединения с data_interface_service: %s", e)
         raise HTTPException(status_code=502, detail="Upload service connection error")
 
@@ -53,7 +54,11 @@ async def upload_bookings(
 
 
 @router.post("/fetch-forecast", response_model=ForecastResponse)
-async def fetch_forecast(req: ForecastRequest, token_data: Dict = Depends(verify_token)):
+async def fetch_forecast(
+    req: ForecastRequest,
+    token_data: Dict = Depends(verify_token),
+    client: httpx.AsyncClient = Depends(get_http_client),
+):
     """
     Получение прогноза из data_interface_service.
     """
@@ -62,14 +67,13 @@ async def fetch_forecast(req: ForecastRequest, token_data: Dict = Depends(verify
         raise HTTPException(status_code=403, detail="hotel_id required for this action")
 
     try:
-        response = requests.post(
+        response = await client.post(
             f"{DATA_INTERFACE_SERVICE_URL}/forecast/fetch",
             json=req.model_dump(),
             headers={"x-hotel-id": str(hotel_id)},
-            timeout=10,
         )
         response.raise_for_status()
         return response.json()
-    except requests.RequestException as e:
+    except httpx.RequestError as e:
         logger.error("Ошибка при запросе прогноза: %s", e)
         raise HTTPException(status_code=500, detail="Data interface forecast error")
