@@ -1,10 +1,22 @@
 from datetime import datetime
+from enum import Enum
 
 from sqlalchemy import Enum as SqlEnum, UniqueConstraint, ForeignKey, DateTime, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.db import IdMixin, Base
-from shared.enums import UserRole, SystemRole
+
+
+class SystemRole(Enum):
+    user = "user"
+    admin = "system_admin"
+    support = "support"
+
+
+class UserRole(Enum):
+    owner = "owner"
+    manager = "manager"
+    viewer = "viewer"
 
 
 class User(IdMixin, Base):
@@ -56,7 +68,7 @@ class ProcessedEvent(Base):
     __table_args__ = {"schema": "auth"}
 
     event_id: Mapped[str] = mapped_column(primary_key=True)
-    event_type: Mapped[str] = mapped_column( nullable=False)
+    event_type: Mapped[str] = mapped_column(nullable=False)
     processed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
