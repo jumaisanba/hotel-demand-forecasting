@@ -1,0 +1,13 @@
+scikit-learn
+pandas
+numpy
+joblib
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+asyncpg
+pydantic_settings
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.11.0+cpu

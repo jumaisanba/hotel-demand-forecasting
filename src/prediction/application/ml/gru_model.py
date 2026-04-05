@@ -1,6 +1,7 @@
+from typing import Dict, Tuple, List
+
 import torch
 import torch.nn as nn
-from typing import Dict, Tuple, List
 
 
 class GRUForecaster(nn.Module):

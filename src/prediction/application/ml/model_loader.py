@@ -1,11 +1,12 @@
-import torch
 import json
 import logging
 from typing import Tuple, Dict
+
+import torch
 from torch.nn import Module
 
-from prediction_service.config import prediction_config
-from prediction_service.core.gru_model import GRUForecaster
+from prediction.application.ml.gru_model import GRUForecaster
+from prediction.config import prediction_config
 from shared.errors import (
     ServiceError,
     ExternalServiceError,
