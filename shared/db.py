@@ -36,9 +36,9 @@ async def init_models():
 
 # === Базовый класс для всех моделей ===
 class Base(DeclarativeBase):
-    id: Mapped[int] = mapped_column(primary_key=True)
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
 
+class IdMixin:
+    id: Mapped[int] = mapped_column(primary_key=True)

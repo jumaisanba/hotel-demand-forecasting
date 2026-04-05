@@ -33,7 +33,7 @@ class ServiceError(Exception):
 class AuthorizationError(ServiceError):
     status_code = status.HTTP_401_UNAUTHORIZED
     type = "AuthorizationError"
-    message = "Неверный идентификатор отеля или API-ключ"
+    message = "Требуется авторизация"
 
 
 class NotFoundError(ServiceError):
@@ -80,18 +80,23 @@ class ModelConfigError(ServiceError):
     message = "Ошибка валидации конфигурации модели"
 
 
-# === Доменные ошибки (для data_interface_service и моделей) ===
+# === Доменные ошибки (для booking и моделей) ===
 
-class CSVProcessingError(ServiceError):
+class ImportFormatError(ServiceError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-    type = "CSVProcessingError"
-    message = "Ошибка обработки CSV-файла"
+    type = "BookingImportFormatError"
+    message = "Некорректная структура входных данных"
 
 
 class MappingError(ServiceError):
     status_code = status.HTTP_400_BAD_REQUEST
     type = "MappingError"
     message = "Ошибка преобразования данных"
+
+class BusinessValidationError(ServiceError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    type = "BusinessValidationError"
+    message = "Ошибка бизнес-валидации"
 
 
 class InsufficientHistoryError(ServiceError):

@@ -4,7 +4,7 @@ from shared.base_config import ConfigBase
 
 
 class DatabaseConfig(ConfigBase):
-    model_config = SettingsConfigDict(env_prefix="DB_")
+    model_config = ConfigBase.model_config | SettingsConfigDict(env_prefix="DB_")
 
     user: str
     password: str
