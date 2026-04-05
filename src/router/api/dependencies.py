@@ -1,7 +1,7 @@
 import httpx
 from fastapi import Header, Request, Cookie, Depends
 
-from router.api.schemas import AccessibleHotel
+from router.api.schemas import AccessibleHotel, AuthPrincipal
 from router.api.utils.jwt import (
     decode_access_jwt,
     validate_base_principal,
@@ -37,6 +37,20 @@ def get_jwt_principal(
     payload = decode_access_jwt(token)
 
     return validate_base_principal(payload)
+
+
+def get_auth_principal(
+        payload: dict = Depends(get_jwt_principal),
+) -> AuthPrincipal:
+    """Возвращает principal текущего пользователя."""
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise AuthorizationError("User id missing in token")
+
+    try:
+        return AuthPrincipal(user_id=int(user_id))
+    except (TypeError, ValueError) as exc:
+        raise AuthorizationError("Invalid user id in token") from exc
 
 
 def get_current_hotel(

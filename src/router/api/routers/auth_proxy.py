@@ -39,7 +39,7 @@ async def login(
 ):
     auth_response = await proxy_post(
         client=client,
-        url=f"{router_config.auth_service_url}/auth/login",
+        url=f"{router_config.auth_url}/sessions/login",
         json=data.model_dump(),
     )
 
@@ -59,7 +59,7 @@ async def refresh(
 ):
     auth_response = await proxy_post(
         client=client,
-        url=f"{router_config.auth_service_url}/auth/refresh",
+        url=f"{router_config.auth_url}/sessions/refresh",
     )
 
     forward_response(source=auth_response, target=response)
@@ -82,7 +82,7 @@ async def change_password(
 
     auth_response = await proxy_post(
         client=client,
-        url=f"{router_config.auth_service_url}/auth/change-password",
+        url=f"{router_config.auth_url}/sessions/change-password",
         headers=headers,
         json=data.model_dump(),
     )
@@ -103,7 +103,7 @@ async def logout(
 ):
     auth_response = await proxy_post(
         client=client,
-        url=f"{router_config.auth_service_url}/auth/logout",
+        url=f"{router_config.auth_url}/sessions/logout",
     )
 
     forward_response(source=auth_response, target=response)
@@ -127,7 +127,7 @@ async def logout_all(
 
     auth_response = await proxy_post(
         client=client,
-        url=f"{router_config.auth_service_url}/auth/logout/all",
+        url=f"{router_config.auth_url}/sessions/logout/all",
         headers=headers,
     )
 
@@ -149,7 +149,7 @@ async def register_user(
 ):
     auth_response = await proxy_post(
         client=client,
-        url=f"{router_config.auth_service_url}/users/register",
+        url=f"{router_config.auth_url}/users/register",
         json=data.model_dump(),
     )
 
@@ -165,5 +165,5 @@ async def register_user(
 async def get_me(
         payload: dict = Depends(get_jwt_principal),
 ):
-    # TODO: в будущем редиректить в 'auth_service/auth/me'
+    # TODO: в будущем редиректить в 'auth/auth/me'
     return payload

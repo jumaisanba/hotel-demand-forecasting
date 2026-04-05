@@ -5,7 +5,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from router.api.routers import auth, data_interface, prediction
+from router.api.routers import auth_proxy, booking_proxy, prediction_proxy
 from router.config import router_config
 from shared.errors import register_error_handlers, setup_openapi_with_errors
 
@@ -34,9 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-app.include_router(data_interface.router, prefix="/data", tags=["Data Interface"])
-app.include_router(prediction.router, prefix="/prediction", tags=["Prediction"])
+app.include_router(auth_proxy.router, prefix="/auth", tags=["Auth"])
+app.include_router(booking_proxy.router, prefix="/data", tags=["Booking"])
+app.include_router(prediction_proxy.router, prefix="/prediction", tags=["Prediction"])
 
 
 @app.get("/")

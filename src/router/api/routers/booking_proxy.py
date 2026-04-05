@@ -5,13 +5,11 @@ from fastapi import APIRouter, Depends, UploadFile, File, status, Response
 
 from router.api.dependencies import (
     get_http_client,
-    get_current_hotel
+    get_current_hotel, get_auth_principal
 )
 from router.api.schemas import (
-    ForecastRequest,
-    ForecastResponse,
     BookingImportResponse,
-    AccessibleHotel
+    AccessibleHotel, HotelResponse, HotelCreateRequest, AuthPrincipal
 )
 from router.api.utils.http import forward_response
 from router.api.utils.http import proxy_post
@@ -20,11 +18,9 @@ from shared.errors import (
     register_errors,
     AuthorizationError,
     ExternalServiceError,
-    NoForecastError,
-    InsufficientHistoryError,
     DatabaseError,
     MappingError,
-    CSVProcessingError,
+    ImportFormatError,
     ConflictError
 )
 
@@ -33,13 +29,13 @@ router = APIRouter()
 
 
 @router.post(
-    "/import-bookings",
+    "/import",
     response_model=BookingImportResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Импорт бронирований в систему",
 )
 @register_errors(
-    AuthorizationError, MappingError, CSVProcessingError,
+    AuthorizationError, MappingError, ImportFormatError,
     ConflictError, DatabaseError, ExternalServiceError
 )
 async def import_bookings(
@@ -50,7 +46,7 @@ async def import_bookings(
 ):
     """
     Прокси-запрос для загрузки бронирований.
-    Отправляет CSV-файл в `data_interface_service/booking/import`.
+    Отправляет CSV-файл в `booking/booking/import`.
     """
 
     file_content = await file.read()
@@ -58,7 +54,7 @@ async def import_bookings(
 
     import_response = await proxy_post(
         client=client,
-        url=f"{router_config.data_interface_service_url}/booking/import",
+        url=f"{router_config.booking_url}/booking/import",
         headers={"X-Hotel-Id": str(hotel.id)},
         files=files,
     )
@@ -72,38 +68,39 @@ async def import_bookings(
 
 
 @router.post(
-    "/fetch-forecast",
-    response_model=ForecastResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Получение прогноза из системы",
+    "/hotels",
+    response_model=HotelResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать отель",
 )
 @register_errors(
-    AuthorizationError, NoForecastError,
-    InsufficientHistoryError, DatabaseError, ExternalServiceError
+    AuthorizationError,
+    ConflictError,
+    DatabaseError,
+    ExternalServiceError,
 )
-async def fetch_forecast(
-        req: ForecastRequest,
+async def create_hotel(
         response: Response,
-        hotel: AccessibleHotel = Depends(get_current_hotel),
+        request: HotelCreateRequest,
+        principal: AuthPrincipal = Depends(get_auth_principal),
         client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """
-    Прокси-запрос для получения прогноза.
-    Перенаправляет вызов в `data_interface_service/forecast/fetch`.
-    """
-    headers = {"X-Hotel-Id": str(hotel.id)}
+    Прокси-запрос на создание отеля.
 
-    forecast_response = await proxy_post(
+    Отправляет JSON в сервис booking и пробрасывает
+    доверенный идентификатор пользователя в заголовке X-User-Id.
+    """
+    booking_response = await proxy_post(
         client=client,
-        url=f"{router_config.data_interface_service_url}/forecast/fetch",
-        headers={"X-Hotel-Id": str(hotel.id)},
-        json=req.model_dump(mode="json"),
+        url=f"{router_config.booking_url}/hotel",
+        headers={"X-User-Id": str(principal.user_id)},
+        json=request.model_dump(),
     )
-    forward_response(source=forecast_response, target=response)
+    forward_response(source=booking_response, target=response)
 
     logger.info(
-        "Прогноз успешно получен через router_service: hotel_id=%s, horizon=%s",
-        hotel.id,
-        req.horizon,
+        "Создание отеля завершено через router_service: user_id=%s",
+        principal.user_id,
     )
     return response

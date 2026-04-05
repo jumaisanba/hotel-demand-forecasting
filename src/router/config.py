@@ -14,9 +14,9 @@ class JWTConfig(ConfigBase):
 class RouterConfig(ConfigBase):
     jwt_config: JWTConfig = Field(default_factory=JWTConfig)
 
-    prediction_service_url: str = "http://prediction_service:8001"
-    auth_service_url: str = "http://auth-service:8002"
-    data_interface_service_url: str = "http://data-interface-service:8003"
+    auth_url: str = "http://auth:8000"
+    booking_url: str = "http://booking:8000"
+    prediction_url: str = "http://prediction:8000"
     frontend_url: str = "http://frontend:8080"
 
 

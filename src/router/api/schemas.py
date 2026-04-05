@@ -35,6 +35,12 @@ class UserRegisterResponse(BaseModel):
     is_active: bool = Field(..., description="Флаг активности пользователя.")
 
 
+class AuthPrincipal(BaseModel):
+    """Данные аутентифицированного пользователя, извлечённые из JWT-токена."""
+
+    user_id: int = Field(..., gt=0, description="Уникальный идентификатор пользователя, полученный из токена.")
+
+
 # === DATA INTERFACE (загрузка бронирований и чтение сохранённых прогнозов) ===
 class HotelUserRole(str, Enum):
     """Роль пользователя в отеле"""
@@ -76,6 +82,20 @@ class BookingImportResponse(BaseModel):
     hotel_id: int = Field(..., description="Идентификатор отеля, отправившего данные")
     added: Optional[int] = Field(None, ge=0, description="Количество добавленных записей")
     duplicates_skipped: Optional[int] = Field(None, ge=0, description="Количество пропущенных дубликатов")
+
+
+class HotelCreateRequest(BaseModel):
+    """Запрос на создание отеля"""
+    name: str = Field(..., min_length=1, max_length=255, description="Название отеля")
+    is_city_hotel: bool = Field(..., description="Флаг городского отеля")
+
+
+class HotelResponse(BaseModel):
+    """Результат создания отеля"""
+    id: int = Field(..., gt=0, description="Идентификатор отеля")
+    name: str = Field(..., min_length=1, max_length=255, description="Название отеля")
+    is_city_hotel: bool = Field(..., description="Флаг городского отеля")
+    api_key: str = Field(..., min_length=10, description="API-ключ отеля")
 
 
 # === PREDICTION (генерация прогноза моделью) ===
