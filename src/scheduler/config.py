@@ -1,4 +1,5 @@
 from datetime import date
+
 from pydantic import Field
 
 from shared.base_config import ConfigBase
@@ -6,7 +7,7 @@ from shared.db_config import DatabaseConfig
 
 
 class SchedulerConfig(ConfigBase):
-    router_service_url: str
+    router_url: str
 
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 

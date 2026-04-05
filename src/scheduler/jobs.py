@@ -1,14 +1,17 @@
 import logging
-from datetime import datetime, date
-from shared.db import get_sync_session
-from scheduler_service.config import scheduler_config
+from datetime import datetime
+
 import httpx
+
+from scheduler.config import scheduler_config
+#from shared.db import get_sync_session
 
 logger = logging.getLogger(__name__)
 
-def trigger_forecast():
+
+def run_forecast_job():
     logger.info("[%s] Запуск задачи trigger_forecast()", datetime.now())
-    session = get_sync_session()
+    #session = get_sync_session()
 
     try:
         # TODO: заменить на динамическое получение из БД
@@ -31,7 +34,7 @@ def trigger_forecast():
 
             try:
                 response = httpx.post(
-                    f"{scheduler_config.router_service_url}/prediction/run-prediction",
+                    f"{scheduler_config.router_url}/prediction/run-prediction",
                     json=payload,
                     timeout=10
                 )
