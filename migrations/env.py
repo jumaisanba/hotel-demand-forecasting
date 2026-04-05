@@ -1,13 +1,22 @@
+import sys
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = BASE_DIR / "src"
+sys.path.insert(0, str(SRC_DIR))
+sys.path.insert(0, str(BASE_DIR))
+
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from alembic import context
-
+from shared.db import Base
+from auth.infrastructure.db.models import User, UserHotel  # noqa
+from booking.infrastructure.db.models import City, Hotel, Booking  # noqa
 from shared.db_config import database_config
-from shared.db_models import Hotel # noqa
-from shared.db import  Base
+from prediction.infrastructure.db.models import Weather, Holiday, Prediction
 
 config = context.config
 
@@ -37,6 +46,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_schemas=True,
     )
 
     with context.begin_transaction():
@@ -58,7 +68,9 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
         )
 
         with context.begin_transaction():
