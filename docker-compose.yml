@@ -1,11 +1,20 @@
-version: '3.9'
-
 x-db-env: &db_env
   DB_USER: ${DB_USER}
   DB_PASSWORD: ${DB_PASSWORD}
   DB_HOST: ${DB_HOST}
   DB_PORT: ${DB_PORT}
   DB_NAME: ${DB_NAME}
+
+x-rabbit-env: &rabbit_env
+  RABBITMQ_HOST: ${RABBITMQ_HOST}
+  RABBITMQ_PORT: ${RABBITMQ_PORT}
+  RABBITMQ_USER: ${RABBITMQ_USER}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+  RABBITMQ_VHOST: ${RABBITMQ_VHOST}
+
+x-redis-env: &redis_env
+  REDIS_HOST: ${REDIS_HOST}
+  REDIS_PORT: ${REDIS_PORT}
 
 services:
 
@@ -37,6 +46,22 @@ services:
         "--appendfsync", "everysec"
       ]
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: always
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+
   migrations:
     build:
       context: .
@@ -46,7 +71,9 @@ services:
       - db
     environment:
       <<: *db_env
+      PYTHONPATH: /app/src:/app
     volumes:
+      - ./src:/app/src
       - ./shared:/app/shared
       - ./migrations:/app/migrations
       - ./alembic.ini:/app/alembic.ini
@@ -66,14 +93,14 @@ services:
   router:
     build:
       context: .
-      dockerfile: router/Dockerfile
+      dockerfile: src/router/Dockerfile
     container_name: router
     restart: always
     environment:
-      PREDICTION_SERVICE_URL: ${PREDICTION_SERVICE_URL}
-      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
-      DATA_INTERFACE_SERVICE_URL: ${DATA_INTERFACE_SERVICE_URL}
-      SCHEDULER_SERVICE_URL: ${SCHEDULER_SERVICE_URL}
+      PREDICTION_URL: ${PREDICTION_URL}
+      AUTH_URL: ${AUTH_URL}
+      BOOKING_URL: ${BOOKING_URL}
+      SCHEDULER_URL: ${SCHEDULER_URL}
       FRONTEND_URL: ${FRONTEND_URL}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_HASH_ALGORITHM: ${JWT_HASH_ALGORITHM}
@@ -82,79 +109,133 @@ services:
     volumes:
       - ./shared:/shared
 
-  prediction_service:
+  prediction:
     build:
       context: .
-      dockerfile: prediction_service/Dockerfile
-    container_name: prediction_service
+      dockerfile: src/prediction/Dockerfile
+    container_name: prediction
     restart: always
     depends_on:
       migrations:
         condition: service_completed_successfully
     ports:
-      - "8002:8001"
+      - "8002:8000"
     volumes:
       - ./shared:/shared
     environment:
       <<: *db_env
 
-  auth_service:
+  auth:
     build:
       context: .
-      dockerfile: auth_service/Dockerfile
-    container_name: auth_service
+      dockerfile: src/auth/Dockerfile
+    container_name: auth
     restart: always
     depends_on:
       redis:
         condition: service_started
       migrations:
         condition: service_completed_successfully
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
     ports:
       - "8003:8002"
     volumes:
       - ./shared:/shared
     environment:
-      <<: *db_env
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
+      <<:
+        - *db_env
+        - *rabbit_env
+        - *redis_env
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       JWT_HASH_ALGORITHM: ${JWT_HASH_ALGORITHM}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
       REFRESH_TOKEN_EXPIRE_MINUTES: ${REFRESH_TOKEN_EXPIRE_MINUTES}
       PASSWORD_HASH_ALGORITHM: ${PASSWORD_HASH_ALGORITHM}
 
-  data_interface_service:
+  auth_hotel_created_consumer:
     build:
       context: .
-      dockerfile: data_interface_service/Dockerfile
-    container_name: data_interface_service
-    restart: always
-    depends_on:
-      migrations:
-        condition: service_completed_successfully
-    ports:
-      - "8004:8003"
-    volumes:
-      - ./shared:/shared
+      dockerfile: ./src/auth/Dockerfile
+    command: python -m auth.cmd.run_hotel_created_consumer
     environment:
-      <<: *db_env
+      <<:
+        - *db_env
+        - *rabbit_env
+        - *redis_env
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_HASH_ALGORITHM: ${JWT_HASH_ALGORITHM}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
+      REFRESH_TOKEN_EXPIRE_MINUTES: ${REFRESH_TOKEN_EXPIRE_MINUTES}
+      PASSWORD_HASH_ALGORITHM: ${PASSWORD_HASH_ALGORITHM}
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
-  scheduler_service:
+  booking:
     build:
       context: .
-      dockerfile: scheduler_service/Dockerfile
-    container_name: scheduler_service
+      dockerfile: src/booking/Dockerfile
+    container_name: booking
     restart: always
     depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
       migrations:
         condition: service_completed_successfully
     ports:
-      - "8005:8004"
+      - "8004:8000"
+    volumes:
+      - ./shared:/shared
+    environment:
+      <<:
+        - *db_env
+        - *rabbit_env
+      OUTBOX_PUBLISH_INTERVAL_SEC: 2
+      OUTBOX_BATCH_SIZE: 100
+
+  booking_outbox_publisher:
+    build:
+      context: .
+      dockerfile: ./src/booking/Dockerfile
+    command: python -m booking.cmd.run_outbox_publisher
+    environment:
+      <<:
+        - *db_env
+        - *rabbit_env
+      OUTBOX_PUBLISH_INTERVAL_SEC: 2
+      OUTBOX_BATCH_SIZE: 100
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: src/scheduler/Dockerfile
+    container_name: scheduler
+    restart: always
+    depends_on:
+      db:
+        condition: service_started
+      migrations:
+        condition: service_completed_successfully
+    ports:
+      - "8005:8000"
     volumes:
       - ./shared:/shared
     environment:
       <<: *db_env
-      ROUTER_SERVICE_URL: ${ROUTER_SERVICE_URL}
+      ROUTER_URL: ${ROUTER_URL}
 
   scripts:
     build:
@@ -162,6 +243,8 @@ services:
       dockerfile: scripts/Dockerfile
     container_name: scripts
     depends_on:
+      db:
+        condition: service_started
       migrations:
         condition: service_completed_successfully
     volumes:
