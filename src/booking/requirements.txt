@@ -1,0 +1,10 @@
+pandas
+numpy
+fastapi
+uvicorn
+sqlalchemy
+python-multipart
+psycopg2-binary
+asyncpg
+pydantic_settings
+aio_pika
